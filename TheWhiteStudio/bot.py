@@ -41,7 +41,7 @@ COLORS = {
 }
 
 # ID группы Roblox (ЗАМЕНИ НА СВОЙ)
-GROUP_ID = 123456789  # <-- СЮДА ВСТАВЬ ID СВОЕЙ ГРУППЫ
+GROUP_ID = 35984818  # <-- СЮДА ВСТАВЬ ID СВОЕЙ ГРУППЫ
 
 @bot.event
 async def on_ready():
