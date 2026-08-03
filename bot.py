@@ -7,6 +7,9 @@ import json
 from datetime import datetime
 import os
 import sqlite3
+import threading
+import uvicorn
+from fastapi import FastAPI
 
 # Настройки бота
 intents = discord.Intents.default()
@@ -41,7 +44,7 @@ COLORS = {
 }
 
 # ID группы Roblox (ЗАМЕНИ НА СВОЙ)
-GROUP_ID = 35984818  # <-- СЮДА ВСТАВЬ ID СВОЕЙ ГРУППЫ
+GROUP_ID = 123456789  # <-- СЮДА ВСТАВЬ ID СВОЕЙ ГРУППЫ
 
 @bot.event
 async def on_ready():
@@ -424,6 +427,51 @@ async def stats(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed)
 
+# ============ ВЕБ-СЕРВЕР ДЛЯ RENDER ============
+web_app = FastAPI()
+
+@web_app.get("/")
+async def root():
+    return {
+        "status": "Bot is running!",
+        "message": "Discord bot is active",
+        "bot_name": bot.user.name if bot.user else "Unknown",
+        "servers": len(bot.guilds) if bot.guilds else 0
+    }
+
+@web_app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "bot_connected": bot.is_ready()
+    }
+
+@web_app.get("/stats")
+async def web_stats():
+    conn = sqlite3.connect('connections.db')
+    c = conn.cursor()
+    c.execute('SELECT COUNT(*) FROM connections')
+    count = c.fetchone()[0]
+    conn.close()
+    
+    return {
+        "servers": len(bot.guilds),
+        "users": sum(guild.member_count for guild in bot.guilds),
+        "connected_users": count,
+        "ping": round(bot.latency * 1000),
+        "status": "online" if bot.is_ready() else "offline"
+    }
+
+def run_web():
+    """Запускает веб-сервер для Render"""
+    port = int(os.environ.get("PORT", 10000))
+    print(f"🌐 Запуск веб-сервера на порту {port}")
+    uvicorn.run(web_app, host="0.0.0.0", port=port, log_level="info")
+
+# Запускаем веб-сервер в отдельном потоке
+threading.Thread(target=run_web, daemon=True).start()
+
 # ============ ОБРАБОТКА ОШИБОК ============
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -448,4 +496,5 @@ if __name__ == "__main__":
     if not token:
         print("❌ Токен не найден! Установите переменную окружения DISCORD_TOKEN")
     else:
+        print("🤖 Запуск Discord бота...")
         bot.run(token)
